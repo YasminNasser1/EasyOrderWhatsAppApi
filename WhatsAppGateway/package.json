@@ -1,0 +1,15 @@
+{
+  "name": "easyorder-whatsapp-gateway",
+  "version": "1.0.0",
+  "description": "Free Local WhatsApp Gateway for EasyOrder C# API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "express": "^4.21.1",
+    "pino": "^9.5.0",
+    "qrcode": "^1.5.4"
+  }
+}

@@ -1,0 +1,7 @@
+bin/
+obj/
+.vs/
+WhatsAppGateway/node_modules/
+WhatsAppGateway/auth_info/
+cloudflared.exe
+*.user
