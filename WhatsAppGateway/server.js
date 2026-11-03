@@ -536,7 +536,6 @@ app.get('/', async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    ${!isConnected ? '<meta http-equiv="refresh" content="4">' : ''}
     <title>WhatsApp Web</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -558,6 +557,8 @@ app.get('/', async (req, res) => {
             z-index: 1;
         }
         .wa-header-inner {
+            position: relative;
+            z-index: 10;
             max-width: 1000px;
             margin: 0 auto;
             padding: 28px 20px;
@@ -576,6 +577,8 @@ app.get('/', async (req, res) => {
             letter-spacing: 0.5px;
         }
         .wa-settings-btn {
+            position: relative;
+            z-index: 20;
             background: rgba(255,255,255,0.18);
             color: #fff;
             border: none;
@@ -593,8 +596,10 @@ app.get('/', async (req, res) => {
             max-width: 960px;
             margin: 0 auto;
             padding: 95px 20px 40px;
+            pointer-events: none;
         }
         .wa-card {
+            pointer-events: auto;
             background: #ffffff;
             border-radius: 3px;
             box-shadow: 0 17px 50px 0 rgba(11,20,26,.19), 0 12px 15px 0 rgba(11,20,26,.24);
@@ -808,6 +813,16 @@ app.get('/', async (req, res) => {
             </form>
         </div>
     </div>
+    ${!isConnected ? `
+    <script>
+        setInterval(function () {
+            var modal = document.getElementById('settingsModal');
+            if (!modal || !modal.classList.contains('active')) {
+                window.location.reload();
+            }
+        }, 4000);
+    </script>
+    ` : ''}
 </body>
 </html>
     `);
