@@ -512,7 +512,7 @@ function clearAuthFolder() {
     } catch {}
 }
 
-// الصفحة البسيطة والأنيقة زي ما كانت في الأول
+// تصميم مطابق لـ WhatsApp Web العادي بدون تفاصيل كثيرة ظاهرة
 app.get('/', async (req, res) => {
     let hasApiKey = false;
     let maskedKey = '';
@@ -532,72 +532,278 @@ app.get('/', async (req, res) => {
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    ${currentQR && !isConnected ? '<meta http-equiv="refresh" content="5">' : ''}
-    <title>ربط واتساب متجر EasyOrders</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    ${!isConnected ? '<meta http-equiv="refresh" content="4">' : ''}
+    <title>WhatsApp Web</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f9; text-align: center; padding: 30px; }
-        .card { background: white; max-width: 580px; margin: 0 auto; padding: 30px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        h1 { color: #128C7E; margin-bottom: 10px; font-size: 24px; }
-        .status-ok { background: #d4edda; color: #155724; padding: 15px; border-radius: 10px; font-size: 17px; font-weight: bold; margin-top: 16px; }
-        .status-wait { background: #fff3cd; color: #856404; padding: 15px; border-radius: 10px; font-size: 16px; margin-top: 16px; }
-        .url-box { background: #eef6ff; border: 2px dashed #0d6efd; padding: 14px; border-radius: 10px; margin: 18px 0; direction: ltr; font-family: Consolas, monospace; font-size: 14px; color: #0a58ca; word-break: break-all; font-weight: bold; }
-        .api-box { background: #f8f9fa; border: 1px solid #dee2e6; padding: 16px; border-radius: 10px; margin: 18px 0; text-align: right; }
-        .api-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; box-sizing: border-box; margin-top: 6px; }
-        .btn-save { background: #128C7E; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%; }
-        .btn-save:hover { background: #0e6f64; }
-        img.qr { width: 260px; height: 260px; border: 4px solid #25D366; border-radius: 12px; padding: 8px; margin-top: 15px; }
-        .btn-logout { background: #dc3545; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 15px; cursor: pointer; margin-top: 16px; font-weight: bold; }
-        .btn-logout:hover { background: #bb2d3b; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #eae6df;
+            color: #41525d;
+            min-height: 100vh;
+            position: relative;
+        }
+        /* الشريط الأخضر العلوي الخاص بـ WhatsApp Web */
+        .wa-header {
+            background-color: #00a884;
+            height: 222px;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .wa-header-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 28px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            direction: ltr;
+        }
+        .wa-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .wa-settings-btn {
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .wa-settings-btn:hover { background: rgba(255,255,255,0.28); }
+        /* الكارت الأبيض الرئيسي مثل WhatsApp Web */
+        .wa-main {
+            position: relative;
+            z-index: 2;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 95px 20px 40px;
+        }
+        .wa-card {
+            background: #ffffff;
+            border-radius: 3px;
+            box-shadow: 0 17px 50px 0 rgba(11,20,26,.19), 0 12px 15px 0 rgba(11,20,26,.24);
+            padding: 58px 60px;
+            min-height: 440px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 48px;
+        }
+        .wa-instructions {
+            flex: 1;
+        }
+        .wa-title {
+            font-size: 28px;
+            font-weight: 300;
+            color: #41525d;
+            margin-bottom: 36px;
+        }
+        .wa-steps {
+            list-style: none;
+            font-size: 18px;
+            line-height: 28px;
+            color: #3b4a54;
+        }
+        .wa-steps li {
+            margin-bottom: 18px;
+        }
+        .wa-qr-box {
+            width: 264px;
+            height: 264px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .wa-qr-box img {
+            width: 264px;
+            height: 264px;
+            display: block;
+        }
+        .wa-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e9edef;
+            border-top-color: #00a884;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* شاشة الاتصال النشط */
+        .wa-connected {
+            width: 100%;
+            text-align: center;
+            padding: 30px 0;
+        }
+        .wa-connected-icon {
+            width: 72px;
+            height: 72px;
+            background: #00a884;
+            color: #fff;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            margin-bottom: 20px;
+        }
+        .wa-connected h2 {
+            font-size: 26px;
+            font-weight: 400;
+            color: #41525d;
+            margin-bottom: 10px;
+        }
+        .wa-connected p {
+            font-size: 16px;
+            color: #667781;
+            margin-bottom: 28px;
+        }
+        .wa-logout-btn {
+            background: transparent;
+            color: #d93025;
+            border: 1px solid #d93025;
+            padding: 10px 28px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .wa-logout-btn:hover {
+            background: #d93025;
+            color: #fff;
+        }
+        /* نافذة الإعدادات المخفية (تظهر عند الضغط على زر الإعدادات فقط) */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11,20,26,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-backdrop.active { display: flex; }
+        .modal-box {
+            background: #fff;
+            width: 90%;
+            max-width: 460px;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+        }
+        .modal-box h3 { color: #00a884; margin-bottom: 14px; font-size: 18px; }
+        .modal-box label { display: block; font-size: 13px; color: #3b4a54; margin-top: 10px; font-weight: 600; }
+        .modal-box input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #d1d7db;
+            border-radius: 6px;
+            margin-top: 5px;
+            font-size: 13px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .btn-primary {
+            flex: 1;
+            background: #00a884;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-close {
+            background: #e9edef;
+            color: #41525d;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .wa-card { flex-direction: column-reverse; padding: 32px 24px; text-align: center; }
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>💬 بوابة ربط الواتساب (EasyOrders)</h1>
-        
-        <div style="background:#f8f9fa; padding:12px; border-radius:10px; margin-bottom:15px;">
-            <div style="color:#333; font-weight:bold; margin-bottom:5px;">🌐 اللينك الثابت لموقع EasyOrders:</div>
-            <div class="url-box">${publicWebhookUrl}</div>
-            <small style="color:#666;">انسخي اللينك ده وحطيه في أي متجر على EasyOrders جوه خانة Webhook URL (مع الكود السري <code>123456</code>)</small>
+    <div class="wa-header">
+        <div class="wa-header-inner">
+            <div class="wa-brand">
+                <svg viewBox="0 0 39 39" width="39" height="39">
+                    <path fill="#00E676" d="M10.7 32.8l.6.3c2.5 1.5 5.3 2.2 8.1 2.2 8.8 0 16-7.2 16-16 0-4.2-1.7-8.3-4.7-11.3s-7-4.7-11.3-4.7c-8.8 0-16 7.2-15.9 16.1 0 3 .9 5.9 2.4 8.4l.4.6-1.6 5.9 6-1.5z"></path>
+                    <path fill="#FFF" d="M32.4 6.4C29 2.9 24.3 1 19.5 1 9.3 1 1.1 9.3 1.2 19.4c0 3.2.9 6.3 2.4 9.1L1 38l9.7-2.5c2.7 1.5 5.7 2.2 8.7 2.2 10.1 0 18.3-8.3 18.3-18.4 0-4.9-1.9-9.5-5.3-12.9zM19.5 34.6c-2.7 0-5.4-.7-7.7-2.1l-.6-.3-5.8 1.5L6.9 28l-.4-.6c-4.4-7.1-2.3-16.5 4.9-20.9s16.5-2.3 20.9 4.9 2.3 16.5-4.9 20.9c-2.3 1.5-5.1 2.3-7.9 2.3zm8.8-11.1l-1.1-.5s-1.6-.7-2.6-1.2c-.1 0-.2-.1-.3-.1-.3 0-.5.1-.7.2 0 0-.1.1-1.5 1.7-.1.2-.3.3-.5.3h-.1c-.1 0-.3-.1-.4-.2l-.5-.2c-1.1-.5-2.1-1.1-2.9-1.9-.2-.2-.5-.4-.7-.6-.7-.7-1.4-1.5-1.9-2.4l-.1-.2c-.1-.1-.1-.2-.2-.4 0-.2 0-.4.1-.5 0 0 .4-.5.7-.8.2-.2.3-.5.5-.7.2-.3.3-.7.2-1-.1-.5-1.3-3.2-1.6-3.8-.2-.3-.4-.4-.7-.5h-1.1c-.2 0-.4.1-.6.1l-.1.1c-.2.1-.4.3-.6.4-.2.2-.3.4-.5.6-.7.9-1.1 2-1.1 3.1 0 .8.2 1.6.5 2.3l.1.3c.9 1.9 2.1 3.6 3.7 5.1l.4.4c.3.3.6.5.8.8 2.1 1.8 4.5 3.1 7.2 3.8.3.1.7.1 1 .2h1c.5 0 1.1-.2 1.5-.4.3-.2.5-.2.7-.4l.2-.2c.2-.2.4-.3.6-.5s.4-.4.5-.6c.2-.4.3-.9.4-1.4v-.7s-.1-.1-.3-.2z"></path>
+                </svg>
+                <span>WHATSAPP WEB</span>
+            </div>
+            <button class="wa-settings-btn" onclick="document.getElementById('settingsModal').classList.add('active')">⚙️ الإعدادات</button>
         </div>
+    </div>
 
-        <div class="api-box">
-            <div style="font-weight:bold; color:#128C7E; font-size:15px;">
-                ⚙️ إعدادات المتجر المربوط حالياً (الاسم + مفتاح الـ API):
-            </div>
-            <div style="font-size:13px; color:#555; margin-top:4px;">
-                🏷️ اسم البراند الحالي في الرسالة: <b>${currentBrand}</b><br>
-                ${hasApiKey
-                    ? `✅ <b>مفتاح EasyOrders API مربوط وشغال!</b> (<span dir="ltr">${maskedKey}</span>)`
-                    : `⚠️ لتفعيل تأكيد وإلغاء الطلب على الموقع، الصقي مفتاح <b>Public API</b> من إعدادات EasyOrders:`}
-            </div>
-            <form method="POST" action="/save-apikey" style="margin-top:10px;">
-                <label style="font-size:12px;font-weight:bold;color:#333;">اسم المتجر / البراند (اللي بيظهر للعميل في رسالة الواتساب):</label>
-                <input type="text" name="brandName" class="api-input" value="${currentBrand}" placeholder="اكتبي اسم البراند هنا..." />
-                <label style="font-size:12px;font-weight:bold;color:#333;display:block;margin-top:8px;">مفتاح EasyOrders Public API Key للمتجر:</label>
-                <input type="text" name="apiKey" class="api-input" dir="ltr" placeholder="${hasApiKey ? 'لو ربطتي متجر جديد الصقي مفتاحه الجديد هنا...' : 'الصقي كود EasyOrders Public API Key هنا...'}" />
-                <button type="submit" class="btn-save">💾 حفظ إعدادات المتجر</button>
+    <div class="wa-main">
+        <div class="wa-card">
+            ${isConnected ? `
+                <div class="wa-connected">
+                    <div class="wa-connected-icon">✓</div>
+                    <h2>واتساب متصل الآن</h2>
+                    <p dir="ltr">+${connectedUser}</p>
+                    <form method="POST" action="/logout">
+                        <button type="submit" class="wa-logout-btn">تسجيل الخروج</button>
+                    </form>
+                </div>
+            ` : `
+                <div class="wa-instructions">
+                    <div class="wa-title">استخدام واتساب على الكمبيوتر</div>
+                    <ol class="wa-steps">
+                        <li>١. افتح واتساب على هاتفك</li>
+                        <li>٢. اضغط على <strong>القائمة</strong> أو <strong>الإعدادات</strong> وحدد <strong>الأجهزة المرتبطة</strong></li>
+                        <li>٣. اضغط على <strong>ربط جهاز</strong> ووجّه هاتفك إلى هذه الشاشة لمسح الرمز</li>
+                    </ol>
+                </div>
+                <div class="wa-qr-box">
+                    ${currentQR
+                        ? `<img src="${currentQR}" alt="QR Code" />`
+                        : `<div class="wa-spinner"></div>`
+                    }
+                </div>
+            `}
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-backdrop">
+        <div class="modal-box">
+            <h3>إعدادات المتجر</h3>
+            <form method="POST" action="/save-apikey">
+                <label>اسم البراند:</label>
+                <input type="text" name="brandName" value="${currentBrand}" />
+                <label>مفتاح EasyOrders Public API Key ${hasApiKey ? `(${maskedKey})` : ''}:</label>
+                <input type="text" name="apiKey" dir="ltr" placeholder="API Key..." />
+                <label>لينك الـ Webhook:</label>
+                <input type="text" dir="ltr" readonly value="${publicWebhookUrl}" onclick="this.select()" />
+                <div class="modal-actions">
+                    <button type="submit" class="btn-primary">حفظ</button>
+                    <button type="button" class="btn-close" onclick="document.getElementById('settingsModal').classList.remove('active')">إغلاق</button>
+                </div>
             </form>
         </div>
-
-        ${isConnected ? `
-            <div class="status-ok">
-                ✅ الواتساب متصل وشغال بنجاح!<br>
-                الرقم المربوط حالياً: <b>${connectedUser}</b>
-            </div>
-            <p style="color:#555; margin-top:14px; font-size:14px;">أي أوردر جديد هيتعمل على متجرك هيتبعتله رسالة واتساب بأزرار قابلة للضغط (<b>تأكيد الاوردر</b> / <b>إلغاء الاوردر</b> / <b>طلب الدعم</b>) 🎉</p>
-            <form method="POST" action="/logout">
-                <button type="submit" class="btn-logout">🔄 فصل الرقم الحالي وربط رقم جديد</button>
-            </form>
-        ` : currentQR ? `
-            <div class="status-wait">
-                📱 افتحي واتساب من الموبايل ⬅️ الأجهزة المرتبطة (Linked Devices) ⬅️ ربط جهاز، وامسحي الكود ده:
-            </div>
-            <img class="qr" src="${currentQR}" alt="WhatsApp QR Code" />
-        ` : `
-            <div class="status-wait">
-                ⏳ جاري تجهيز كود الـ QR... الصفحة هتحدث نفسها تلقائياً خلال ثواني
-            </div>
-        `}
     </div>
 </body>
 </html>
@@ -619,18 +825,20 @@ app.post('/save-apikey', async (req, res) => {
     res.redirect('/');
 });
 
-app.post(['/logout', '/whatsapp/logout'], async (req, res) => {
+app.all(['/logout', '/whatsapp/logout'], async (req, res) => {
     try {
         isConnected = false;
         currentQR = null;
         connectedUser = null;
         if (sock) {
-            try { await sock.logout(); } catch {}
-            try { sock.end(); } catch {}
+            const activeSock = sock;
             sock = null;
+            try { await activeSock.logout(); } catch {}
+            try { activeSock.end(); } catch {}
+        } else {
+            clearAuthFolder();
+            setTimeout(connectToWhatsApp, 1500);
         }
-        clearAuthFolder();
-        setTimeout(connectToWhatsApp, 1500);
         res.redirect('/');
     } catch {
         res.redirect('/');

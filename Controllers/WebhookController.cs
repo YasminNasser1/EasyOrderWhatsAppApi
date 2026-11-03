@@ -110,5 +110,41 @@ namespace EasyOrderWhatsAppPL.Controllers
                 return Content("<h2 style='font-family:sans-serif;text-align:center;margin-top:50px;'>⏳ جاري تشغيل بوابة الواتساب... حدث الصفحة بعد 5 ثواني</h2>", "text/html; charset=utf-8");
             }
         }
+
+        [HttpGet("/logout")]
+        [HttpPost("/logout")]
+        [HttpGet("/whatsapp/logout")]
+        [HttpPost("/whatsapp/logout")]
+        public async Task<IActionResult> LogoutWhatsApp()
+        {
+            try
+            {
+                var client = httpClientFactory.CreateClient();
+                await client.PostAsync("http://localhost:3001/logout", null);
+            }
+            catch { }
+
+            return Redirect("/whatsapp");
+        }
+
+        [HttpPost("/save-apikey")]
+        public async Task<IActionResult> SaveApiKeyFromForm([FromForm] string? brandName, [FromForm] string? apiKey)
+        {
+            var viewModel = new SaveSettingViewModel
+            {
+                BrandName = brandName,
+                ApiKey = apiKey
+            };
+
+            await orderService.SaveStoreSetting(viewModel);
+
+            if (!string.IsNullOrWhiteSpace(apiKey))
+                System.IO.File.WriteAllText(Path.Combine(env.ContentRootPath, "easyorders_apikey.txt"), apiKey.Trim());
+
+            if (!string.IsNullOrWhiteSpace(brandName))
+                System.IO.File.WriteAllText(Path.Combine(env.ContentRootPath, "easyorders_brandname.txt"), brandName.Trim());
+
+            return Redirect("/whatsapp");
+        }
     }
 }
