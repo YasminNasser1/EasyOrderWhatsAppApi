@@ -2,10 +2,8 @@ using EasyOrderWhatsAppDAL.Entities;
 
 namespace EasyOrderWhatsAppDAL.Repositories.Interfaces
 {
-    public interface IStoreSettingRepository
+    public interface IStoreSettingRepository : IGenericRepository<StoreSetting>
     {
         Task<StoreSetting?> GetCurrentSettingAsync();
-        Task AddAsync(StoreSetting setting);
-        void Update(StoreSetting setting);
     }
 }

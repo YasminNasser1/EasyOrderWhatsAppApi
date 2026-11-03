@@ -1,10 +1,9 @@
 using AutoMapper;
+using EasyOrderWhatsAppBLL.Constants;
 using EasyOrderWhatsAppBLL.Helpers;
 using EasyOrderWhatsAppBLL.Services.Interfaces;
 using EasyOrderWhatsAppBLL.ViewModels.OrderViewModels;
-using EasyOrderWhatsAppBLL.ViewModels.SettingViewModels;
 using EasyOrderWhatsAppDAL.Entities;
-using EasyOrderWhatsAppDAL.Entities.Enums;
 using EasyOrderWhatsAppDAL.Repositories.Interfaces;
 
 namespace EasyOrderWhatsAppBLL.Services.Classes
@@ -13,128 +12,117 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
     {
         private readonly IUnitOfWork unitOfWork;
         private readonly IMapper mapper;
-        private readonly IWhatsAppService whatsAppService;
+        private readonly IWhatsAppGatewayService whatsAppGatewayService;
+        private readonly IEasyOrdersApiService easyOrdersApiService;
+        private readonly IStoreSettingService storeSettingService;
 
-        public OrderService(IUnitOfWork unitOfWork, IMapper mapper, IWhatsAppService whatsAppService)
+        public OrderService(
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            IWhatsAppGatewayService whatsAppGatewayService,
+            IEasyOrdersApiService easyOrdersApiService,
+            IStoreSettingService storeSettingService)
         {
             this.unitOfWork = unitOfWork;
             this.mapper = mapper;
-            this.whatsAppService = whatsAppService;
+            this.whatsAppGatewayService = whatsAppGatewayService;
+            this.easyOrdersApiService = easyOrdersApiService;
+            this.storeSettingService = storeSettingService;
         }
 
-        // 1. استقبال الأوردر الجديد من EasyOrders وحفظه وإرسال رسالة الواتساب للعميل
-        public async Task<bool> ProcessIncomingWebhookOrder(string rawJson)
+        #region 1. استقبال أوردر جديد من EasyOrders وإرسال رسالة التأكيد
+
+        public async Task<bool> ProcessIncomingWebhookOrderAsync(string rawJson)
         {
-            try
+            var orderVm = EasyOrderJsonParser.Parse(rawJson);
+            if (orderVm is null)
+                return true; // طلب اختبار فاضي من EasyOrders عند حفظ اللينك
+
+            await SaveNewOrderAsync(orderVm);
+
+            string brandName = await storeSettingService.GetBrandNameAsync();
+            var confirmation = new SendConfirmationViewModel
             {
-                var orderVm = OrderHelperMethod.ParseEasyOrderJson(rawJson);
-                if (orderVm is null)
-                    return true; // في حالة طلب الاختبار الفارغ من EasyOrders عند حفظ اللينك
+                Phone = orderVm.Phone,
+                Message = ConfirmationMessageBuilder.Build(orderVm, brandName),
+                OrderUuid = orderVm.OrderUuid,
+                OrderId = orderVm.ShortId,
+                StoreId = orderVm.StoreId ?? "",
+                CustomerName = orderVm.CustomerName,
+                BrandName = brandName
+            };
 
-                var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
-                string brandName = setting?.BrandName ?? "";
-
-                // تحويل الـ ViewModel إلى Entity وحفظه عن طريق الـ UnitOfWork (بنفس طريقة MetalCompany)
-                var mappedOrder = mapper.Map<Order>(orderVm);
-                mappedOrder.Status = Status.انتظار;
-                mappedOrder.CreatedAt = DateTime.Now;
-
-                await unitOfWork.OrderRepository.AddAsync(mappedOrder);
-                await unitOfWork.SaveChangesAsync();
-
-                // تجهيز نص الرسالة وإرسالها للعميل على الواتساب
-                string message = OrderHelperMethod.BuildConfirmationMessage(orderVm, brandName);
-
-                await whatsAppService.SendOrderConfirmationAsync(
-                    orderVm.Phone,
-                    message,
-                    orderVm.OrderUuid,
-                    orderVm.ShortId,
-                    orderVm.StoreId,
-                    orderVm.CustomerName,
-                    brandName);
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return await whatsAppGatewayService.SendOrderConfirmationAsync(confirmation);
         }
 
-        // 2. التعامل مع ضغطة الزرار من العميل (تأكيد / إلغاء / سبب الإلغاء / دعم) وتحديث موقع EasyOrders
-        public async Task<bool> HandleCustomerOrderAction(OrderActionViewModel actionModel)
+        private async Task SaveNewOrderAsync(CreateOrderViewModel orderVm)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(actionModel.Action))
-                    return false;
-
-                var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
-                string apiKey = setting?.ApiKey ?? "";
-
-                var order = await unitOfWork.OrderRepository.GetByShortIdOrUuidAsync(actionModel.OrderId, actionModel.OrderUuid);
-                string action = actionModel.Action.ToLower();
-
-                if (action == "confirm")
-                {
-                    if (order is not null)
-                    {
-                        order.Status = Status.تأكيد;
-                        order.UpdatedAt = DateTime.Now;
-                        unitOfWork.OrderRepository.Update(order);
-                        await unitOfWork.SaveChangesAsync();
-                    }
-
-                    bool updated = await whatsAppService.UpdateOrderStatusOnEasyOrdersAsync(actionModel.OrderUuid, actionModel.OrderId, "confirmed", apiKey);
-                    await whatsAppService.AddOrderNoteOnEasyOrdersAsync(actionModel.OrderUuid, actionModel.OrderId, actionModel.StoreId, "✅ تم تأكيد الطلب من العميل عبر الواتساب", apiKey);
-                    return updated;
-                }
-                else if (action == "cancel")
-                {
-                    if (order is not null)
-                    {
-                        order.Status = Status.لاغى;
-                        order.UpdatedAt = DateTime.Now;
-                        unitOfWork.OrderRepository.Update(order);
-                        await unitOfWork.SaveChangesAsync();
-                    }
-
-                    return await whatsAppService.UpdateOrderStatusOnEasyOrdersAsync(actionModel.OrderUuid, actionModel.OrderId, "canceled", apiKey);
-                }
-                else if (action == "cancel_reason")
-                {
-                    if (order is not null)
-                    {
-                        order.CancelReason = actionModel.Reason;
-                        order.UpdatedAt = DateTime.Now;
-                        unitOfWork.OrderRepository.Update(order);
-                        await unitOfWork.SaveChangesAsync();
-                    }
-
-                    string note = $"❌ سبب إلغاء الطلب (من العميل عبر واتساب): {actionModel.Reason}";
-                    return await whatsAppService.AddOrderNoteOnEasyOrdersAsync(actionModel.OrderUuid, actionModel.OrderId, actionModel.StoreId, note, apiKey);
-                }
-                else if (action == "support")
-                {
-                    if (order is not null)
-                    {
-                        order.Status = Status.دعم;
-                        order.UpdatedAt = DateTime.Now;
-                        unitOfWork.OrderRepository.Update(order);
-                        await unitOfWork.SaveChangesAsync();
-                    }
-
-                    return await whatsAppService.AddOrderNoteOnEasyOrdersAsync(actionModel.OrderUuid, actionModel.OrderId, actionModel.StoreId, "📞 طلب العميل التواصل مع خدمة العملاء عبر الواتساب", apiKey);
-                }
-
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
+            var order = mapper.Map<Order>(orderVm);
+            await unitOfWork.OrderRepository.AddAsync(order);
+            await unitOfWork.SaveChangesAsync();
         }
+
+        #endregion
+
+        #region 2. التعامل مع ضغطة زرار العميل (تأكيد / إلغاء / سبب الإلغاء / دعم)
+
+        public async Task<bool> HandleCustomerActionAsync(OrderActionViewModel actionModel)
+        {
+            var localOrder = await unitOfWork.OrderRepository.GetByShortIdOrUuidAsync(actionModel.OrderId, actionModel.OrderUuid);
+            var reference = new EasyOrderReference(actionModel.OrderUuid, actionModel.OrderId, actionModel.StoreId);
+            string apiKey = await storeSettingService.GetApiKeyAsync();
+
+            return actionModel.Action?.ToLower() switch
+            {
+                CustomerActions.Confirm => await ConfirmOrderAsync(localOrder, reference, apiKey),
+                CustomerActions.Cancel => await CancelOrderAsync(localOrder, reference, apiKey),
+                CustomerActions.CancelReason => await SaveCancelReasonAsync(localOrder, reference, actionModel.Reason, apiKey),
+                CustomerActions.Support => await RequestSupportAsync(localOrder, reference, apiKey),
+                _ => false
+            };
+        }
+
+        private async Task<bool> ConfirmOrderAsync(Order? localOrder, EasyOrderReference reference, string apiKey)
+        {
+            await UpdateLocalOrderAsync(localOrder, order => order.Confirm());
+
+            bool isUpdated = await easyOrdersApiService.UpdateOrderStatusAsync(reference, EasyOrdersStatuses.Confirmed, apiKey);
+            await easyOrdersApiService.AddOrderNoteAsync(reference, OrderNotes.Confirmed, apiKey);
+            return isUpdated;
+        }
+
+        private async Task<bool> CancelOrderAsync(Order? localOrder, EasyOrderReference reference, string apiKey)
+        {
+            await UpdateLocalOrderAsync(localOrder, order => order.Cancel());
+            return await easyOrdersApiService.UpdateOrderStatusAsync(reference, EasyOrdersStatuses.Canceled, apiKey);
+        }
+
+        private async Task<bool> SaveCancelReasonAsync(Order? localOrder, EasyOrderReference reference, string? reason, string apiKey)
+        {
+            await UpdateLocalOrderAsync(localOrder, order => order.SetCancelReason(reason));
+            return await easyOrdersApiService.AddOrderNoteAsync(reference, OrderNotes.CancelReason(reason), apiKey);
+        }
+
+        private async Task<bool> RequestSupportAsync(Order? localOrder, EasyOrderReference reference, string apiKey)
+        {
+            await UpdateLocalOrderAsync(localOrder, order => order.RequestSupport());
+            return await easyOrdersApiService.AddOrderNoteAsync(reference, OrderNotes.SupportRequested, apiKey);
+        }
+
+        // دالة واحدة لتحديث الأوردر في الداتابيز بدل تكرار نفس الـ 3 سطور في كل أكشن
+        private async Task UpdateLocalOrderAsync(Order? order, Action<Order> applyChange)
+        {
+            if (order is null)
+                return;
+
+            applyChange(order);
+            unitOfWork.OrderRepository.Update(order);
+            await unitOfWork.SaveChangesAsync();
+        }
+
+        #endregion
+
+        #region 3. عرض الأوردرات
 
         public IEnumerable<OrderViewModel> GetAllOrders()
         {
@@ -142,58 +130,12 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
             return mapper.Map<IEnumerable<OrderViewModel>>(orders);
         }
 
-        public async Task<OrderViewModel?> GetOrder(int id)
+        public async Task<OrderViewModel?> GetOrderAsync(int id)
         {
             var order = await unitOfWork.OrderRepository.GetByIdAsync(id);
-            if (order == null) return null;
-            return mapper.Map<OrderViewModel>(order);
+            return order is null ? null : mapper.Map<OrderViewModel>(order);
         }
 
-        public async Task<(bool hasKey, string maskedKey, string brandName)> GetStoreSettingStatus()
-        {
-            var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
-            string key = setting?.ApiKey ?? "";
-            string brand = setting?.BrandName ?? "";
-            string masked = string.IsNullOrWhiteSpace(key)
-                ? ""
-                : (key.Length > 8 ? key.Substring(0, 4) + "****" + key.Substring(key.Length - 4) : "****");
-
-            return (!string.IsNullOrWhiteSpace(key), masked, brand);
-        }
-
-        public async Task<bool> SaveStoreSetting(SaveSettingViewModel model)
-        {
-            try
-            {
-                var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
-                if (setting is null)
-                {
-                    setting = new StoreSetting
-                    {
-                        ApiKey = model.ApiKey?.Trim() ?? "",
-                        BrandName = model.BrandName?.Trim() ?? "",
-                        CreatedAt = DateTime.Now
-                    };
-                    await unitOfWork.StoreSettingRepository.AddAsync(setting);
-                }
-                else
-                {
-                    if (!string.IsNullOrWhiteSpace(model.ApiKey))
-                        setting.ApiKey = model.ApiKey.Trim();
-
-                    if (!string.IsNullOrWhiteSpace(model.BrandName))
-                        setting.BrandName = model.BrandName.Trim();
-
-                    setting.UpdatedAt = DateTime.Now;
-                    unitOfWork.StoreSettingRepository.Update(setting);
-                }
-
-                return await unitOfWork.SaveChangesAsync() > 0;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        #endregion
     }
 }

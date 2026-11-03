@@ -5,8 +5,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <NoWarn>NU1903</NoWarn>
-    <DefaultItemExcludes>$(DefaultItemExcludes);EasyOrderWhatsAppDAL\**;EasyOrderWhatsAppBLL\**;WhatsAppGateway\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);EasyOrderWhatsAppDAL\**;EasyOrderWhatsAppBLL\**;WhatsAppGateway\node_modules\**;WhatsAppGateway\auth_info\**</DefaultItemExcludes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="WhatsAppGateway\server.js" />
+    <None Include="WhatsAppGateway\package.json" />
+    <None Include="WhatsAppGateway\src\**\*" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Services\**" />

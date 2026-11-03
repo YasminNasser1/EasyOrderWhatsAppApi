@@ -1,8 +1,10 @@
 using EasyOrderWhatsAppBLL;
+using EasyOrderWhatsAppBLL.Constants;
 using EasyOrderWhatsAppBLL.Services.Classes;
 using EasyOrderWhatsAppBLL.Services.Interfaces;
 using EasyOrderWhatsAppDAL.Data.Contexts;
 using EasyOrderWhatsAppDAL.Data.DataSeed;
+using EasyOrderWhatsAppDAL.Data.FileStorage;
 using EasyOrderWhatsAppDAL.Repositories.Classes;
 using EasyOrderWhatsAppDAL.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -16,54 +18,40 @@ namespace EasyOrderWhatsAppApi
             var builder = WebApplication.CreateBuilder(args);
 
             #region Add services to the container
-            // Add services to the container.
             builder.Services.AddControllers();
-            builder.Services.AddHttpClient();
 
+            // DAL: الداتابيز + الـ Repositories + الـ UnitOfWork (بنفس طريقة MetalCompany)
             builder.Services.AddDbContext<EasyOrderDbContext>(options =>
             {
                 options.UseInMemoryDatabase("EasyOrderWhatsAppDb");
             });
-
-            // تسجيل الـ Repositories والـ UnitOfWork بنفس طريقة MetalCompany
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IStoreSettingRepository, StoreSettingRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            builder.Services.AddSingleton<ISettingsFileStore>(new SettingsFileStore(builder.Environment.ContentRootPath));
 
-            // تسجيل الـ AutoMapper
+            // AutoMapper
             builder.Services.AddAutoMapper(typeof(ProfileReferenceAssemply).Assembly);
 
-            // تسجيل الـ Services
-            builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
+            // BLL: الـ Services
+            builder.Services.AddScoped<IStoreSettingService, StoreSettingService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddHttpClient<IEasyOrdersApiService, EasyOrdersApiService>();
+            builder.Services.AddHttpClient<IWhatsAppGatewayService, WhatsAppGatewayService>(client =>
+            {
+                client.BaseAddress = new Uri(WhatsAppGatewayRoutes.BaseUrl);
+            });
             #endregion
 
             var app = builder.Build();
 
-            #region Migrate Database - Data Seeding
-            using var Scope = app.Services.CreateScope();
-            var dbContextObj = Scope.ServiceProvider.GetRequiredService<EasyOrderDbContext>();
-
-            string defaultBrand = "";
-            string defaultApiKey = builder.Configuration["EasyOrders:ApiKey"] ?? "";
-
-            string savedKeyFile = Path.Combine(app.Environment.ContentRootPath, "easyorders_apikey.txt");
-            if (File.Exists(savedKeyFile))
+            #region Data Seeding
+            using (var scope = app.Services.CreateScope())
             {
-                string keyFromFile = File.ReadAllText(savedKeyFile).Trim();
-                if (!string.IsNullOrWhiteSpace(keyFromFile))
-                    defaultApiKey = keyFromFile;
+                var dbContext = scope.ServiceProvider.GetRequiredService<EasyOrderDbContext>();
+                var settingsFileStore = scope.ServiceProvider.GetRequiredService<ISettingsFileStore>();
+                await EasyOrderDataSeeding.SeedData(dbContext, settingsFileStore);
             }
-
-            string savedBrandFile = Path.Combine(app.Environment.ContentRootPath, "easyorders_brandname.txt");
-            if (File.Exists(savedBrandFile))
-            {
-                string brandFromFile = File.ReadAllText(savedBrandFile).Trim();
-                if (!string.IsNullOrWhiteSpace(brandFromFile))
-                    defaultBrand = brandFromFile;
-            }
-
-            await EasyOrderDataSeeding.SeedData(dbContextObj, defaultBrand, defaultApiKey);
             #endregion
 
             #region Configure the HTTP request pipeline

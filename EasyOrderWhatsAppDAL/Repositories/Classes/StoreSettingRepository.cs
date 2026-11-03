@@ -5,22 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EasyOrderWhatsAppDAL.Repositories.Classes
 {
-    public class StoreSettingRepository : IStoreSettingRepository
+    public class StoreSettingRepository : GenericRepository<StoreSetting>, IStoreSettingRepository
     {
-        private readonly EasyOrderDbContext dbContext;
-
-        public StoreSettingRepository(EasyOrderDbContext dbContext)
+        public StoreSettingRepository(EasyOrderDbContext dbContext) : base(dbContext)
         {
-            this.dbContext = dbContext;
         }
 
         public async Task<StoreSetting?> GetCurrentSettingAsync()
         {
             return await dbContext.StoreSettings.FirstOrDefaultAsync();
         }
-
-        public async Task AddAsync(StoreSetting setting) => await dbContext.StoreSettings.AddAsync(setting);
-
-        public void Update(StoreSetting setting) => dbContext.StoreSettings.Update(setting);
     }
 }

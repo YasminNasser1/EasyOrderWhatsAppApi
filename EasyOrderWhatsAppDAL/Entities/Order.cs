@@ -11,7 +11,29 @@ namespace EasyOrderWhatsAppDAL.Entities
         public string Phone { get; set; } = null!;
         public string ProductsText { get; set; } = null!;
         public decimal TotalCost { get; set; }
-        public Status Status { get; set; } = Status.انتظار;
+        public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public string? CancelReason { get; set; }
+
+        #region Behaviors (Encapsulation: الأوردر هو اللي بيغير حالته بنفسه)
+
+        public void Confirm() => ChangeStatus(OrderStatus.Confirmed);
+
+        public void Cancel() => ChangeStatus(OrderStatus.Canceled);
+
+        public void RequestSupport() => ChangeStatus(OrderStatus.SupportRequested);
+
+        public void SetCancelReason(string? reason)
+        {
+            CancelReason = reason;
+            MarkAsUpdated();
+        }
+
+        private void ChangeStatus(OrderStatus newStatus)
+        {
+            Status = newStatus;
+            MarkAsUpdated();
+        }
+
+        #endregion
     }
 }
