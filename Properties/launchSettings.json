@@ -3,10 +3,11 @@
     "EasyOrderWhatsAppApi": {
       "commandName": "Project",
       "launchBrowser": true,
+      "launchUrl": "whatsapp",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "https://localhost:58698;http://localhost:58699"
+      "applicationUrl": "http://localhost:5055"
     }
   }
 }

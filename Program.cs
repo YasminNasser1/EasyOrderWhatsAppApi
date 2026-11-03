@@ -1,19 +1,78 @@
-using EasyOrderWhatsAppApi.Services;
+using EasyOrderWhatsAppBLL;
+using EasyOrderWhatsAppBLL.Services.Classes;
+using EasyOrderWhatsAppBLL.Services.Interfaces;
+using EasyOrderWhatsAppDAL.Data.Contexts;
+using EasyOrderWhatsAppDAL.Data.DataSeed;
+using EasyOrderWhatsAppDAL.Repositories.Classes;
+using EasyOrderWhatsAppDAL.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace EasyOrderWhatsAppApi
+{
+    public class Program
+    {
+        public static async Task Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-// قراءة البورت من السيرفر السحابي (Render / Railway / Koyeb) أو استخدام 5055 محلياً
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5055";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+            #region Add services to the container
+            // Add services to the container.
+            builder.Services.AddControllers();
+            builder.Services.AddHttpClient();
 
-builder.Services.AddControllers();
-builder.Services.AddHttpClient<WhatsAppService>();
-builder.Services.AddHttpClient();
+            builder.Services.AddDbContext<EasyOrderDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("EasyOrderWhatsAppDb");
+            });
 
-var app = builder.Build();
+            // تسجيل الـ Repositories والـ UnitOfWork بنفس طريقة MetalCompany
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IStoreSettingRepository, StoreSettingRepository>();
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-app.MapGet("/", () => Results.Redirect("/whatsapp"));
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", time = DateTime.UtcNow }));
-app.MapControllers();
+            // تسجيل الـ AutoMapper
+            builder.Services.AddAutoMapper(typeof(ProfileReferenceAssemply).Assembly);
 
-app.Run();
+            // تسجيل الـ Services
+            builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
+            #endregion
+
+            var app = builder.Build();
+
+            #region Migrate Database - Data Seeding
+            using var Scope = app.Services.CreateScope();
+            var dbContextObj = Scope.ServiceProvider.GetRequiredService<EasyOrderDbContext>();
+
+            string defaultBrand = builder.Configuration["EasyOrders:BrandName"] ?? "Outlix";
+            string defaultApiKey = builder.Configuration["EasyOrders:ApiKey"] ?? "";
+
+            string savedKeyFile = Path.Combine(app.Environment.ContentRootPath, "easyorders_apikey.txt");
+            if (File.Exists(savedKeyFile))
+            {
+                string keyFromFile = File.ReadAllText(savedKeyFile).Trim();
+                if (!string.IsNullOrWhiteSpace(keyFromFile))
+                    defaultApiKey = keyFromFile;
+            }
+
+            string savedBrandFile = Path.Combine(app.Environment.ContentRootPath, "easyorders_brandname.txt");
+            if (File.Exists(savedBrandFile))
+            {
+                string brandFromFile = File.ReadAllText(savedBrandFile).Trim();
+                if (!string.IsNullOrWhiteSpace(brandFromFile))
+                    defaultBrand = brandFromFile;
+            }
+
+            await EasyOrderDataSeeding.SeedData(dbContextObj, defaultBrand, defaultApiKey);
+            #endregion
+
+            #region Configure the HTTP request pipeline
+            app.UseRouting();
+            app.UseAuthorization();
+            app.MapControllers();
+            #endregion
+
+            app.Run();
+        }
+    }
+}

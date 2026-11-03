@@ -5,6 +5,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyOrderWhatsAppApi", "EasyOrderWhatsAppApi.csproj", "{02B75E43-9C9E-485B-80F5-C4ECCA22BB6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyOrderWhatsAppDAL", "EasyOrderWhatsAppDAL\EasyOrderWhatsAppDAL.csproj", "{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyOrderWhatsAppBLL", "EasyOrderWhatsAppBLL\EasyOrderWhatsAppBLL.csproj", "{2D0715AA-3456-491C-B3BB-AFB41AEED24F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,30 @@ Global
 		{02B75E43-9C9E-485B-80F5-C4ECCA22BB6F}.Release|x64.Build.0 = Release|Any CPU
 		{02B75E43-9C9E-485B-80F5-C4ECCA22BB6F}.Release|x86.ActiveCfg = Release|Any CPU
 		{02B75E43-9C9E-485B-80F5-C4ECCA22BB6F}.Release|x86.Build.0 = Release|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Debug|x64.Build.0 = Debug|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Debug|x86.Build.0 = Debug|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Release|x64.ActiveCfg = Release|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Release|x64.Build.0 = Release|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Release|x86.ActiveCfg = Release|Any CPU
+		{C62FFC84-BB04-47CF-9DC6-A5B2D7F68EC5}.Release|x86.Build.0 = Release|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Debug|x64.Build.0 = Debug|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Debug|x86.Build.0 = Debug|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Release|x64.ActiveCfg = Release|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Release|x64.Build.0 = Release|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Release|x86.ActiveCfg = Release|Any CPU
+		{2D0715AA-3456-491C-B3BB-AFB41AEED24F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

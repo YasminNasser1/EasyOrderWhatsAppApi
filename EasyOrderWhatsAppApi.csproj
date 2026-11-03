@@ -4,6 +4,23 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>NU1903</NoWarn>
+    <DefaultItemExcludes>$(DefaultItemExcludes);EasyOrderWhatsAppDAL\**;EasyOrderWhatsAppBLL\**;WhatsAppGateway\**</DefaultItemExcludes>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Services\**" />
+    <Compile Remove="Models\**" />
+    <Content Remove="Services\**" />
+    <Content Remove="Models\**" />
+    <EmbeddedResource Remove="Services\**" />
+    <EmbeddedResource Remove="Models\**" />
+    <None Remove="Services\**" />
+    <None Remove="Models\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="EasyOrderWhatsAppBLL\EasyOrderWhatsAppBLL.csproj" />
+  </ItemGroup>
 
 </Project>
