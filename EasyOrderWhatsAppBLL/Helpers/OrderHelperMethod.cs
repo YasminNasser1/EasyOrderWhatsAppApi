@@ -17,12 +17,13 @@ namespace EasyOrderWhatsAppBLL.Helpers
             return phone;
         }
 
-        // 2. دالة تجهيز نص رسالة الواتساب بنفس شكل موقع Confirm-It
+        // 2. دالة تجهيز نص رسالة الواتساب بنفس شكل موقع Confirm-It بشكل ديناميكي لأي براند
         public static string BuildConfirmationMessage(CreateOrderViewModel order, string brandName)
         {
+            string brandDisplay = string.IsNullOrWhiteSpace(brandName) ? "متجرنا" : $"براند {brandName}";
             return
                 $"أهلاً أ/{order.CustomerName} 👋\n" +
-                $"حضرتك طلبت من براند {brandName} :\n\n" +
+                $"حضرتك طلبت من {brandDisplay} :\n\n" +
                 $"{order.ProductsText}\n\n" +
                 $"إجمالي الطلب: {order.TotalCost:0.00} ج.م\n" +
                 $"رقم الطلب: {order.ShortId}\n\n" +

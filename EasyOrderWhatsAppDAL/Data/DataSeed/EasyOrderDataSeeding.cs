@@ -11,7 +11,7 @@ namespace EasyOrderWhatsAppDAL.Data.DataSeed
             {
                 await dbContext.StoreSettings.AddAsync(new StoreSetting
                 {
-                    BrandName = string.IsNullOrWhiteSpace(defaultBrandName) ? "Outlix" : defaultBrandName,
+                    BrandName = defaultBrandName ?? "",
                     ApiKey = defaultApiKey ?? "",
                     WebhookSecret = "123456",
                     CreatedAt = DateTime.Now

@@ -44,7 +44,7 @@ namespace EasyOrderWhatsAppApi
             using var Scope = app.Services.CreateScope();
             var dbContextObj = Scope.ServiceProvider.GetRequiredService<EasyOrderDbContext>();
 
-            string defaultBrand = builder.Configuration["EasyOrders:BrandName"] ?? "Outlix";
+            string defaultBrand = "";
             string defaultApiKey = builder.Configuration["EasyOrders:ApiKey"] ?? "";
 
             string savedKeyFile = Path.Combine(app.Environment.ContentRootPath, "easyorders_apikey.txt");

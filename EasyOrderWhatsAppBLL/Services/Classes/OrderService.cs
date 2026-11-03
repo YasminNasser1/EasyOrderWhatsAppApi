@@ -32,7 +32,7 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
                     return true; // في حالة طلب الاختبار الفارغ من EasyOrders عند حفظ اللينك
 
                 var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
-                string brandName = setting?.BrandName ?? "Outlix";
+                string brandName = setting?.BrandName ?? "";
 
                 // تحويل الـ ViewModel إلى Entity وحفظه عن طريق الـ UnitOfWork (بنفس طريقة MetalCompany)
                 var mappedOrder = mapper.Map<Order>(orderVm);
@@ -153,7 +153,7 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
         {
             var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
             string key = setting?.ApiKey ?? "";
-            string brand = setting?.BrandName ?? "Outlix";
+            string brand = setting?.BrandName ?? "";
             string masked = string.IsNullOrWhiteSpace(key)
                 ? ""
                 : (key.Length > 8 ? key.Substring(0, 4) + "****" + key.Substring(key.Length - 4) : "****");
@@ -171,7 +171,7 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
                     setting = new StoreSetting
                     {
                         ApiKey = model.ApiKey?.Trim() ?? "",
-                        BrandName = string.IsNullOrWhiteSpace(model.BrandName) ? "Outlix" : model.BrandName.Trim(),
+                        BrandName = model.BrandName?.Trim() ?? "",
                         CreatedAt = DateTime.Now
                     };
                     await unitOfWork.StoreSettingRepository.AddAsync(setting);

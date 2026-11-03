@@ -135,7 +135,8 @@ function extractInteractionFromMessage(messageObj) {
 
 // دالة إرسال رسالة واتساب بأزرار تفاعلية قابلة للضغط (Clickable Buttons) مثل موقع Confirm-It بالظبط
 async function sendConfirmItInteractiveMessage(jid, bodyText, brandName, orderId) {
-    const footerText = `شكراً لثقتك في ${brandName || 'Outlix'} 🙏`;
+    const dynamicBrand = brandName || (sock?.user?.name && sock.user.name !== '~' ? sock.user.name : 'متجرنا');
+    const footerText = `شكراً لثقتك في ${dynamicBrand} 🙏`;
 
     const buttons = [
         {
@@ -475,9 +476,10 @@ async function connectToWhatsApp() {
                     storeId: customerOrder.storeId
                 });
 
+                const activeBrand = customerOrder.brandName || (sock?.user?.name && sock.user.name !== '~' ? sock.user.name : 'متجرنا');
                 await sendBotTextMessage(
                     replyJid,
-                    `📞 أهلاً بك في خدمة عملاء ${customerOrder.brandName || 'Outlix'}، من فضلك اكتب استفسارك هنا وهيتواصل معاك فريق الدعم فوراً 🙏`
+                    `📞 أهلاً بك في خدمة عملاء ${activeBrand}، من فضلك اكتب استفسارك هنا وهيتواصل معاك فريق الدعم فوراً 🙏`
                 );
             }
             // 4. لو العميل بيكتب سبب الإلغاء بعد ما ضغط زر "إلغاء الاوردر"
@@ -494,9 +496,10 @@ async function connectToWhatsApp() {
                     reason: text
                 });
 
+                const activeBrand = customerOrder.brandName || (sock?.user?.name && sock.user.name !== '~' ? sock.user.name : 'متجرنا');
                 await sendBotTextMessage(
                     replyJid,
-                    `شكراً لمشاركتك رأيك معانا 🙏 تم تسجيل سبب الإلغاء، ونتمنى نخدمك بشكل أفضل المرة الجاية في ${customerOrder.brandName || 'Outlix'}.`
+                    `شكراً لمشاركتك رأيك معانا 🙏 تم تسجيل سبب الإلغاء، ونتمنى نخدمك بشكل أفضل المرة الجاية في ${activeBrand}.`
                 );
                 console.log(`📝 تم تسجيل سبب إلغاء الطلب #${customerOrder.orderId} داخل موقع EasyOrders: ${text}`);
             }
@@ -516,14 +519,14 @@ function clearAuthFolder() {
 app.get('/', async (req, res) => {
     let hasApiKey = false;
     let maskedKey = '';
-    let currentBrand = 'Outlix';
+    let currentBrand = '';
     try {
         const resp = await fetch(`${CSHARP_API_BASE}/api/webhook/apikey-status`);
         if (resp.ok) {
             const data = await resp.json();
             hasApiKey = data.hasKey;
             maskedKey = data.maskedKey || '';
-            currentBrand = data.brandName || 'Outlix';
+            currentBrand = data.brandName || (sock?.user?.name && sock.user.name !== '~' ? sock.user.name : '');
         }
     } catch {}
 
@@ -864,6 +867,12 @@ app.post('/send-message', async (req, res) => {
 
         const displayOrderId = orderId || Math.floor(1000 + Math.random() * 9000).toString();
 
+        const resolvedBrand = brandName || (sock?.user?.name && sock.user.name !== '~' ? sock.user.name : '');
+        let finalMessage = message;
+        if (!brandName && resolvedBrand && finalMessage.includes('حضرتك طلبت من متجرنا :')) {
+            finalMessage = finalMessage.replace('حضرتك طلبت من متجرنا :', `حضرتك طلبت من براند ${resolvedBrand} :`);
+        }
+
         orders.unshift({
             orderUuid: orderUuid || '',
             orderId: displayOrderId,
@@ -871,7 +880,7 @@ app.post('/send-message', async (req, res) => {
             customerName: customerName || 'عميل',
             phone: cleanPhone,
             lid: '',
-            brandName: brandName || 'Outlix',
+            brandName: resolvedBrand,
             status: 'pending',
             cancelReason: '',
             createdAt: new Date().toISOString()
@@ -886,7 +895,7 @@ app.post('/send-message', async (req, res) => {
         }
 
         const jid = `${cleanPhone}@s.whatsapp.net`;
-        await sendConfirmItInteractiveMessage(jid, message, brandName || 'Outlix', displayOrderId);
+        await sendConfirmItInteractiveMessage(jid, finalMessage, resolvedBrand, displayOrderId);
         console.log(`📤 تم إرسال رسالة تأكيد الطلب بأزرار تفاعلية (#${displayOrderId}) بنجاح للرقم: ${cleanPhone}`);
 
         return res.json({ success: true, to: cleanPhone });
