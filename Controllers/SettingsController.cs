@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EasyOrderWhatsAppPL.Controllers
 {
-    // إعدادات المتجر (اسم البراند + مفتاح EasyOrders API)
+    // إعدادات المتجر (اسم البراند + مفتاح EasyOrders API) - يدعم التاجر الافتراضي أو تاجر محدد
     [ApiController]
     public class SettingsController : ControllerBase
     {
@@ -16,9 +16,9 @@ namespace EasyOrderWhatsAppPL.Controllers
         }
 
         [HttpGet("/api/webhook/apikey-status")]
-        public async Task<IActionResult> GetStatus()
+        public async Task<IActionResult> GetStatus([FromQuery] string? tenantId = "default")
         {
-            return Ok(await storeSettingService.GetStatusAsync());
+            return Ok(await storeSettingService.GetStatusAsync(tenantId));
         }
 
         // بوابة الواتساب بتبعت الإعدادات كـ JSON
@@ -34,7 +34,10 @@ namespace EasyOrderWhatsAppPL.Controllers
         public async Task<IActionResult> SaveFromForm([FromForm] SaveSettingViewModel model)
         {
             await storeSettingService.SaveAsync(model);
-            return Redirect(WhatsAppController.DashboardRoute);
+            string redirectUrl = string.IsNullOrWhiteSpace(model.TenantId) || model.TenantId == "default"
+                ? WhatsAppController.DashboardRoute
+                : $"{WhatsAppController.DashboardRoute}/{model.TenantId}";
+            return Redirect(redirectUrl);
         }
     }
 }

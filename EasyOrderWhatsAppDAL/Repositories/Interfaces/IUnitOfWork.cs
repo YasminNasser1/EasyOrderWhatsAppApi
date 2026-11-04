@@ -4,6 +4,7 @@ namespace EasyOrderWhatsAppDAL.Repositories.Interfaces
     {
         public IOrderRepository OrderRepository { get; }
         public IStoreSettingRepository StoreSettingRepository { get; }
+        public ITenantRepository TenantRepository { get; }
         public Task<int> SaveChangesAsync();
     }
 }

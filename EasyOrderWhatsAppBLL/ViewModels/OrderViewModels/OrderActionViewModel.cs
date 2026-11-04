@@ -7,5 +7,6 @@ namespace EasyOrderWhatsAppBLL.ViewModels.OrderViewModels
         public string? StoreId { get; set; }
         public string? Action { get; set; }
         public string? Reason { get; set; }
+        public string? TenantId { get; set; }
     }
 }

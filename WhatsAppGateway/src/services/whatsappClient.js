@@ -8,17 +8,16 @@ const {
     generateWAMessageFromContent,
     proto
 } = require('@whiskeysockets/baileys');
-const { AUTH_DIR, RECONNECT_DELAY_MS, DEFAULT_BRAND_NAME } = require('../config');
+const { getAuthDir, RECONNECT_DELAY_MS, DEFAULT_BRAND_NAME } = require('../config');
 const { toWhatsAppJid } = require('../utils/phone');
 
-// الأزرار التفاعلية اللي بتظهر تحت رسالة التأكيد (زي موقع Confirm-It بالظبط)
+// الأزرار التفاعلية اللي بتظهر تحت رسالة التأكيد
 const CONFIRMATION_BUTTONS = [
     { text: 'تأكيد الاوردر', idPrefix: 'confirm' },
     { text: 'إلغاء الاوردر', idPrefix: 'cancel' },
     { text: 'طلب الدعم', idPrefix: 'support' }
 ];
 
-// لازم تتبعت مع الرسالة عشان الواتساب يعرض الأزرار وتبقى clickable
 const INTERACTIVE_ADDITIONAL_NODES = [
     {
         tag: 'biz',
@@ -32,26 +31,26 @@ const INTERACTIVE_ADDITIONAL_NODES = [
     { tag: 'bot', attrs: { biz_bot: '1' } }
 ];
 
-// كلاس مسؤول عن كل حاجة ليها علاقة باتصال الواتساب (ربط - QR - إرسال - تسجيل خروج)
-class WhatsAppClient {
+// كلاس يمثل جلسة واتساب مستقلة لتاجر واحد
+class WhatsAppSession {
     #sock = null;
+    #sentMessages = new Map();
     #messageHandler = null;
-    #sentMessages = new Map(); // بنحتفظ بالرسايل المبعوتة عشان لو الواتساب طلب إعادة إرسالها
 
-    currentQR = null;
-    isConnected = false;
-    connectedUser = null;
+    constructor(tenantId, onMessagesCallback) {
+        this.tenantId = tenantId;
+        this.authDir = getAuthDir(tenantId);
+        this.#messageHandler = onMessagesCallback;
 
-    // تسجيل الدالة اللي هتتنفذ لما توصل رسايل جديدة من العملاء
-    onMessages(handler) {
-        this.#messageHandler = handler;
+        this.currentQR = null;
+        this.isConnected = false;
+        this.connectedUser = null;
     }
 
     isBotMessage(messageId) {
         return this.#sentMessages.has(messageId);
     }
 
-    // اسم البراند: اللي متسجل في الإعدادات، ولو مش موجود ناخد اسم بروفايل الواتساب المربوط
     resolveBrandName(savedBrandName) {
         const profileName = this.#sock?.user?.name;
         const validProfileName = profileName && profileName !== '~' ? profileName : '';
@@ -63,20 +62,26 @@ class WhatsAppClient {
     }
 
     async connect() {
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+        if (this.#sock) return; // متصل بالفعل
+
+        if (!fs.existsSync(this.authDir)) {
+            fs.mkdirSync(this.authDir, { recursive: true });
+        }
+
+        const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
 
         const sock = makeWASocket({
             auth: state,
             logger: pino({ level: 'silent' }),
             printQRInTerminal: false,
-            browser: ['EasyOrders WhatsApp System', 'Chrome', '1.0.0'],
+            browser: [`EasyOrders WhatsApp (${this.tenantId})`, 'Chrome', '1.0.0'],
             getMessage: async (key) => this.#sentMessages.get(key.id) || { conversation: 'EasyOrders' }
         });
         this.#sock = sock;
 
         sock.ev.on('creds.update', saveCreds);
         sock.ev.on('connection.update', (update) => this.#handleConnectionUpdate(sock, update));
-        sock.ev.on('messages.upsert', ({ messages }) => this.#messageHandler?.(messages));
+        sock.ev.on('messages.upsert', ({ messages }) => this.#messageHandler?.(messages, this.tenantId));
     }
 
     async logout() {
@@ -91,7 +96,6 @@ class WhatsAppClient {
             return;
         }
 
-        // بعد الخروج، حدث connection.update هيمسح الجلسة ويولد QR Code جديد
         try { await sock.logout(); } catch {}
         try { sock.end(); } catch {}
     }
@@ -120,14 +124,14 @@ class WhatsAppClient {
         if (qr) {
             this.currentQR = await QRCode.toDataURL(qr);
             this.isConnected = false;
-            console.log('📷 تم توليد QR Code جديد! افتحي http://localhost:3001 لمسحه بموبايلك.');
+            console.log(`📷 [التاجر: ${this.tenantId}] تم توليد QR Code جديد! افتحي http://localhost:3001/whatsapp/${this.tenantId} لمسحه.`);
         }
 
         if (connection === 'open') {
             this.isConnected = true;
             this.currentQR = null;
             this.connectedUser = sock.user?.id?.split(':')[0] || 'متصل';
-            console.log(`✅ تم ربط الواتساب بنجاح! الرقم المتصل: ${this.connectedUser}`);
+            console.log(`✅ [التاجر: ${this.tenantId}] تم ربط الواتساب بنجاح! الرقم: ${this.connectedUser}`);
         }
 
         if (connection === 'close') {
@@ -167,7 +171,6 @@ class WhatsAppClient {
         );
     }
 
-    // بنجدد جلسة التشفير قبل الإرسال عشان الرسالة ماتظهرش "قد يستغرق ذلك بعض الوقت"
     async #ensureFreshSession(jid) {
         try {
             const myId = this.#sock?.user?.id;
@@ -188,11 +191,58 @@ class WhatsAppClient {
 
     #clearAuthFolder() {
         try {
-            if (fs.existsSync(AUTH_DIR)) {
-                fs.rmSync(AUTH_DIR, { recursive: true, force: true });
+            if (fs.existsSync(this.authDir)) {
+                fs.rmSync(this.authDir, { recursive: true, force: true });
             }
         } catch {}
     }
 }
 
-module.exports = new WhatsAppClient();
+// مدير الجلسات (Session Manager) لكل التجار على المنصة
+class WhatsAppSessionManager {
+    #sessions = new Map();
+    #globalMessageHandler = null;
+
+    onMessages(handler) {
+        this.#globalMessageHandler = handler;
+    }
+
+    // إرجاع أو إنشاء جلسة لتاجر معين
+    getSession(tenantId = 'default') {
+        const key = String(tenantId || 'default').trim().toLowerCase() || 'default';
+        if (!this.#sessions.has(key)) {
+            const session = new WhatsAppSession(key, (messages, tid) => {
+                this.#globalMessageHandler?.(messages, tid);
+            });
+            this.#sessions.set(key, session);
+            session.connect();
+        }
+        return this.#sessions.get(key);
+    }
+
+    getAllSessions() {
+        return Array.from(this.#sessions.values());
+    }
+
+    isBotMessage(messageId) {
+        for (const session of this.#sessions.values()) {
+            if (session.isBotMessage(messageId)) return true;
+        }
+        return false;
+    }
+
+    // دوال للتوافق مع الكود القديم (تشتغل على الجلسة الافتراضية default)
+    get isConnected() { return this.getSession('default').isConnected; }
+    get connectedUser() { return this.getSession('default').connectedUser; }
+    get currentQR() { return this.getSession('default').currentQR; }
+    resolveBrandName(savedBrand) { return this.getSession('default').resolveBrandName(savedBrand); }
+    displayBrandName(savedBrand) { return this.getSession('default').displayBrandName(savedBrand); }
+    async connect(tenantId = 'default') { return this.getSession(tenantId).connect(); }
+    async logout(tenantId = 'default') { return this.getSession(tenantId).logout(); }
+    async sendText(jid, text, tenantId = 'default') { return this.getSession(tenantId).sendText(jid, text); }
+    async sendOrderConfirmation(phone, text, brand, orderId, tenantId = 'default') {
+        return this.getSession(tenantId).sendOrderConfirmation(phone, text, brand, orderId);
+    }
+}
+
+module.exports = new WhatsAppSessionManager();

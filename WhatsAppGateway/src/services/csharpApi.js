@@ -26,17 +26,18 @@ async function forwardNewOrder(orderData) {
     return response.ok;
 }
 
-async function getStoreSettings() {
+async function getStoreSettings(tenantId = 'default') {
     try {
-        const response = await fetch(`${CSHARP_API_BASE}/api/webhook/apikey-status`);
+        const query = tenantId && tenantId !== 'default' ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
+        const response = await fetch(`${CSHARP_API_BASE}/api/webhook/apikey-status${query}`);
         if (response.ok) return await response.json();
     } catch {}
     return { hasKey: false, maskedKey: '', brandName: '' };
 }
 
-async function saveStoreSettings({ apiKey, brandName }) {
+async function saveStoreSettings({ apiKey, brandName, tenantId = 'default' }) {
     try {
-        await postJson('/api/webhook/save-apikey', { apiKey, brandName });
+        await postJson('/api/webhook/save-apikey', { apiKey, brandName, tenantId });
     } catch {}
 }
 

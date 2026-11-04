@@ -15,9 +15,9 @@ namespace EasyOrderWhatsAppPL.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index()
+        public IActionResult Index([FromQuery] string? tenantId = null)
         {
-            return Ok(orderService.GetAllOrders());
+            return Ok(orderService.GetAllOrders(tenantId));
         }
 
         [HttpGet("{id:int}")]

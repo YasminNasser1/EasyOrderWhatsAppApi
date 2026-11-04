@@ -17,8 +17,23 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
             this.settingsFileStore = settingsFileStore;
         }
 
-        public async Task<StoreSettingStatusViewModel> GetStatusAsync()
+        public async Task<StoreSettingStatusViewModel> GetStatusAsync(string? tenantId = "default")
         {
+            var key = NormalizeTenant(tenantId);
+            if (key != "default")
+            {
+                var tenant = await unitOfWork.TenantRepository.GetByKeyAsync(key);
+                if (tenant != null)
+                {
+                    return new StoreSettingStatusViewModel
+                    {
+                        HasKey = tenant.HasApiKey,
+                        MaskedKey = MaskApiKey(tenant.ApiKey ?? ""),
+                        BrandName = tenant.BrandName
+                    };
+                }
+            }
+
             var setting = await GetCurrentSettingAsync();
             return new StoreSettingStatusViewModel
             {
@@ -28,24 +43,72 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
             };
         }
 
-        public async Task<string> GetBrandNameAsync() => (await GetCurrentSettingAsync()).BrandName;
+        public async Task<string> GetBrandNameAsync(string? tenantId = "default")
+        {
+            var key = NormalizeTenant(tenantId);
+            if (key != "default")
+            {
+                var tenant = await unitOfWork.TenantRepository.GetByKeyAsync(key);
+                if (tenant != null && !string.IsNullOrWhiteSpace(tenant.BrandName))
+                    return tenant.BrandName;
+            }
+            return (await GetCurrentSettingAsync()).BrandName;
+        }
 
-        public async Task<string> GetApiKeyAsync() => (await GetCurrentSettingAsync()).ApiKey;
+        public async Task<string> GetApiKeyAsync(string? tenantId = "default")
+        {
+            var key = NormalizeTenant(tenantId);
+            if (key != "default")
+            {
+                var tenant = await unitOfWork.TenantRepository.GetByKeyAsync(key);
+                if (tenant != null && !string.IsNullOrWhiteSpace(tenant.ApiKey))
+                    return tenant.ApiKey;
+            }
+            return (await GetCurrentSettingAsync()).ApiKey;
+        }
 
         public async Task<bool> SaveAsync(SaveSettingViewModel model)
         {
-            var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
-            if (setting is null)
+            var key = NormalizeTenant(model.TenantId);
+
+            // 1. تحديث التاجر في جدول Tenants
+            var tenant = await unitOfWork.TenantRepository.GetByKeyAsync(key);
+            if (tenant == null)
             {
-                setting = new StoreSetting();
-                await unitOfWork.StoreSettingRepository.AddAsync(setting);
+                tenant = new Tenant
+                {
+                    StoreKey = key,
+                    BrandName = model.BrandName ?? key,
+                    ApiKey = model.ApiKey,
+                    IsActive = true
+                };
+                await unitOfWork.TenantRepository.AddAsync(tenant);
+            }
+            else
+            {
+                tenant.Update(model.BrandName, model.ApiKey, null);
+                unitOfWork.TenantRepository.Update(tenant);
             }
 
-            setting.Update(model.ApiKey, model.BrandName);
-            settingsFileStore.Save(model.ApiKey, model.BrandName); // عشان تفضل محفوظة بعد إعادة التشغيل
+            // 2. لو التاجر هو default نحفظ كمان في StoreSetting والملف للحفاظ على التوافق الكامل
+            if (key == "default")
+            {
+                var setting = await unitOfWork.StoreSettingRepository.GetCurrentSettingAsync();
+                if (setting is null)
+                {
+                    setting = new StoreSetting();
+                    await unitOfWork.StoreSettingRepository.AddAsync(setting);
+                }
+
+                setting.Update(model.ApiKey, model.BrandName);
+                settingsFileStore.Save(model.ApiKey, model.BrandName);
+            }
 
             return await unitOfWork.SaveChangesAsync() > 0;
         }
+
+        private static string NormalizeTenant(string? tenantId) =>
+            string.IsNullOrWhiteSpace(tenantId) ? "default" : tenantId.Trim().ToLower();
 
         private async Task<StoreSetting> GetCurrentSettingAsync()
         {

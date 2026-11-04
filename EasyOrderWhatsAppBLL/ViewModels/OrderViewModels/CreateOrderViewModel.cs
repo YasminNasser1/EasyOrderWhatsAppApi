@@ -9,5 +9,7 @@ namespace EasyOrderWhatsAppBLL.ViewModels.OrderViewModels
         public string Phone { get; set; } = null!;
         public string ProductsText { get; set; } = null!;
         public decimal TotalCost { get; set; }
+        public string? TenantId { get; set; } = "default";
+        public string? CallbackUrl { get; set; }
     }
 }

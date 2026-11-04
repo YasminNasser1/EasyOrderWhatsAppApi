@@ -20,6 +20,7 @@ namespace EasyOrderWhatsAppDAL.Data.Contexts
 
         public DbSet<Order> Orders { get; set; }
         public DbSet<StoreSetting> StoreSettings { get; set; }
+        public DbSet<Tenant> Tenants { get; set; }
 
         #endregion
     }

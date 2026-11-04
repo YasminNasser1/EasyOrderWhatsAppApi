@@ -11,6 +11,7 @@ module.exports = {
     STATIC_SUBDOMAIN: 'outlix-easyorder-yasmin',
 
     AUTH_DIR: path.join(GATEWAY_DIR, 'auth_info'),
+    getAuthDir: (tenantId = 'default') => path.join(GATEWAY_DIR, 'auth_info', String(tenantId).trim() || 'default'),
     ORDERS_FILE: path.join(GATEWAY_DIR, 'orders_log.json'),
     API_KEY_FILE: path.join(PROJECT_DIR, 'easyorders_apikey.txt'), // نفس الملف اللي سيرفر الـ C# بيحفظه
 

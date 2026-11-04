@@ -12,6 +12,7 @@ namespace EasyOrderWhatsAppBLL.ViewModels.OrderViewModels
         public decimal TotalCost { get; set; }
         public string Status { get; set; } = null!;
         public string? CancelReason { get; set; }
+        public string? TenantId { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

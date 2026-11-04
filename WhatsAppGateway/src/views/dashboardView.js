@@ -12,46 +12,62 @@ const WHATSAPP_LOGO_SVG = `
 </svg>`;
 
 // الصفحة الرئيسية بشكل WhatsApp Web
-function renderDashboard({ isConnected, connectedUser, currentQR, settings, webhookUrl }) {
+function renderDashboard({ isConnected, connectedUser, currentQR, settings, webhookUrl, tenantId = 'default' }) {
     return `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Web</title>
-    <style>${DASHBOARD_CSS}</style>
+    <title>WhatsApp Web${tenantId !== 'default' ? ` - ${escapeHtml(tenantId)}` : ''}</title>
+    <style>
+        ${DASHBOARD_CSS}
+        .wa-tenant-tag {
+            background: rgba(255,255,255,0.25);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-right: 10px;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
-    ${renderHeader()}
+    ${renderHeader(tenantId)}
     <div class="wa-main">
         <div class="wa-card">
-            ${isConnected ? renderConnectedView(connectedUser) : renderQrView(currentQR)}
+            ${isConnected ? renderConnectedView(connectedUser, tenantId) : renderQrView(currentQR)}
         </div>
     </div>
-    ${renderSettingsModal(settings, webhookUrl)}
+    ${renderSettingsModal(settings, webhookUrl, tenantId)}
     ${isConnected ? '' : renderAutoRefreshScript()}
 </body>
 </html>`;
 }
 
-function renderHeader() {
+function renderHeader(tenantId) {
+    const tenantBadge = tenantId && tenantId !== 'default'
+        ? `<span class="wa-tenant-tag">متجر: ${escapeHtml(tenantId)}</span>`
+        : '';
+
     return `
     <div class="wa-header">
         <div class="wa-header-inner">
-            <div class="wa-brand">${WHATSAPP_LOGO_SVG}<span>WHATSAPP WEB</span></div>
+            <div class="wa-brand">${WHATSAPP_LOGO_SVG}<span>WHATSAPP WEB</span> ${tenantBadge}</div>
             <button class="wa-settings-btn" onclick="document.getElementById('settingsModal').classList.add('active')">⚙️ الإعدادات</button>
         </div>
     </div>`;
 }
 
-function renderConnectedView(connectedUser) {
+function renderConnectedView(connectedUser, tenantId) {
+    const logoutAction = tenantId && tenantId !== 'default' ? `/logout/${encodeURIComponent(tenantId)}` : '/logout';
     return `
             <div class="wa-connected">
                 <div class="wa-connected-icon">✓</div>
                 <h2>واتساب متصل الآن</h2>
                 <p dir="ltr">+${connectedUser}</p>
-                <form method="POST" action="/logout">
+                <form method="POST" action="${logoutAction}">
                     <button type="submit" class="wa-logout-btn">تسجيل الخروج</button>
                 </form>
             </div>`;
@@ -74,17 +90,18 @@ function renderQrView(currentQR) {
             <div class="wa-qr-box">${qrContent}</div>`;
 }
 
-function renderSettingsModal({ brandName, hasKey, maskedKey }, webhookUrl) {
+function renderSettingsModal({ brandName, hasKey, maskedKey }, webhookUrl, tenantId) {
     return `
     <div id="settingsModal" class="modal-backdrop">
         <div class="modal-box">
-            <h3>إعدادات المتجر</h3>
+            <h3>إعدادات المتجر ${tenantId && tenantId !== 'default' ? `(${escapeHtml(tenantId)})` : ''}</h3>
             <form method="POST" action="/save-apikey">
+                <input type="hidden" name="tenantId" value="${escapeHtml(tenantId || 'default')}" />
                 <label>اسم البراند:</label>
                 <input type="text" name="brandName" value="${escapeHtml(brandName)}" />
                 <label>مفتاح EasyOrders Public API Key ${hasKey ? `(${maskedKey})` : ''}:</label>
                 <input type="text" name="apiKey" dir="ltr" placeholder="API Key..." />
-                <label>لينك الـ Webhook:</label>
+                <label>لينك الـ Webhook الخاص بك:</label>
                 <input type="text" dir="ltr" readonly value="${webhookUrl}" onclick="this.select()" />
                 <div class="modal-actions">
                     <button type="submit" class="btn-primary">حفظ</button>

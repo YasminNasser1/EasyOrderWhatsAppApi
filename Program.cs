@@ -19,6 +19,7 @@ namespace EasyOrderWhatsAppApi
 
             #region Add services to the container
             builder.Services.AddControllers();
+            builder.Services.AddHttpClient();
 
             // DAL: الداتابيز + الـ Repositories + الـ UnitOfWork (بنفس طريقة MetalCompany)
             builder.Services.AddDbContext<EasyOrderDbContext>(options =>
@@ -27,6 +28,7 @@ namespace EasyOrderWhatsAppApi
             });
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IStoreSettingRepository, StoreSettingRepository>();
+            builder.Services.AddScoped<ITenantRepository, TenantRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddSingleton<ISettingsFileStore>(new SettingsFileStore(builder.Environment.ContentRootPath));
 
@@ -34,6 +36,7 @@ namespace EasyOrderWhatsAppApi
             builder.Services.AddAutoMapper(typeof(ProfileReferenceAssemply).Assembly);
 
             // BLL: الـ Services
+            builder.Services.AddScoped<ITenantService, TenantService>();
             builder.Services.AddScoped<IStoreSettingService, StoreSettingService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddHttpClient<IEasyOrdersApiService, EasyOrdersApiService>();

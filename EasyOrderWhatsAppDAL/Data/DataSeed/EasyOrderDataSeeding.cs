@@ -9,15 +9,28 @@ namespace EasyOrderWhatsAppDAL.Data.DataSeed
         // أول ما السيرفر يشتغل: بنحمّل إعدادات المتجر المحفوظة في الملفات جوه الداتابيز
         public static async Task SeedData(EasyOrderDbContext dbContext, ISettingsFileStore settingsFileStore)
         {
-            if (dbContext.StoreSettings.Any())
-                return;
-
-            await dbContext.StoreSettings.AddAsync(new StoreSetting
+            if (!dbContext.StoreSettings.Any())
             {
-                ApiKey = settingsFileStore.ReadApiKey(),
-                BrandName = settingsFileStore.ReadBrandName()
-            });
-            await dbContext.SaveChangesAsync();
+                await dbContext.StoreSettings.AddAsync(new StoreSetting
+                {
+                    ApiKey = settingsFileStore.ReadApiKey(),
+                    BrandName = settingsFileStore.ReadBrandName()
+                });
+                await dbContext.SaveChangesAsync();
+            }
+
+            if (!dbContext.Tenants.Any())
+            {
+                var defaultSetting = dbContext.StoreSettings.FirstOrDefault();
+                await dbContext.Tenants.AddAsync(new Tenant
+                {
+                    StoreKey = "default",
+                    BrandName = defaultSetting?.BrandName ?? settingsFileStore.ReadBrandName(),
+                    ApiKey = defaultSetting?.ApiKey ?? settingsFileStore.ReadApiKey(),
+                    IsActive = true
+                });
+                await dbContext.SaveChangesAsync();
+            }
         }
     }
 }

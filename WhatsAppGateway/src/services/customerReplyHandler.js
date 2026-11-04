@@ -29,18 +29,18 @@ const ACTION_RULES = {
     }
 };
 
-// الدالة الرئيسية: بتتنفذ مع كل رسالة جديدة توصل على الواتساب
-async function handleIncomingMessages(messages) {
+// الدالة الرئيسية: بتتنفذ مع كل رسالة جديدة توصل على الواتساب لأي تاجر
+async function handleIncomingMessages(messages, tenantId = 'default') {
     for (const msg of messages) {
         try {
-            await handleSingleMessage(msg);
+            await handleSingleMessage(msg, tenantId);
         } catch (err) {
             console.error('❌ خطأ أثناء معالجة رد العميل:', err.message);
         }
     }
 }
 
-async function handleSingleMessage(msg) {
+async function handleSingleMessage(msg, tenantId = 'default') {
     if (!shouldHandle(msg)) return;
 
     const remoteJid = msg.key.remoteJid;
@@ -50,7 +50,7 @@ async function handleSingleMessage(msg) {
     if (!text && !buttonId) return;
     if (msg.key.fromMe && !buttonId && !isCustomerKeyword(text)) return; // رسالة عادية من صاحب الرقم
 
-    console.log(`📩 تفاعل وارد من العميل (${remoteJid}) -> النص: "${text}" | الزر: "${buttonId}"`);
+    console.log(`📩 [التاجر: ${tenantId}] تفاعل وارد من العميل (${remoteJid}) -> النص: "${text}" | الزر: "${buttonId}"`);
 
     const order = ordersStore.findForCustomer({
         orderId: orderIdFromButton(buttonId),
@@ -59,12 +59,12 @@ async function handleSingleMessage(msg) {
     });
     if (!order) return;
 
-    ordersStore.update(order, { lid: remoteJid });
+    ordersStore.update(order, { lid: remoteJid, tenantId: order.tenantId || tenantId });
 
     const action = detectAction(interaction) || detectCancelReason(order, msg);
     if (!action) return;
 
-    await applyAction(order, action, remoteJid, text);
+    await applyAction(order, action, remoteJid, text, tenantId);
 }
 
 // بنتجاهل: رسايل البوت نفسه + الجروبات + الاستوري + الرسايل الفاضية
@@ -81,23 +81,30 @@ function detectCancelReason(order, msg) {
     return isWaitingForReason ? CUSTOMER_ACTION.CANCEL_REASON : null;
 }
 
-async function applyAction(order, action, remoteJid, text) {
+async function applyAction(order, action, remoteJid, text, tenantId) {
     const rule = ACTION_RULES[action];
     const reason = action === CUSTOMER_ACTION.CANCEL_REASON ? text : undefined;
 
-    ordersStore.update(order, { status: rule.nextStatus, ...(reason && { cancelReason: reason }) });
+    const activeTenantId = order.tenantId || tenantId || 'default';
+    ordersStore.update(order, { status: rule.nextStatus, ...(reason && { cancelReason: reason }), tenantId: activeTenantId });
 
     await csharpApi.notifyOrderAction({
         action,
         orderUuid: order.orderUuid,
         orderId: order.orderId,
         storeId: order.storeId,
+        tenantId: activeTenantId,
         reason
     });
 
     // بنرد دايماً على رقم الموبايل نفسه (مش الـ lid) عشان التشفير مايبوظش
     const replyJid = order.phone ? toWhatsAppJid(order.phone) : remoteJid;
-    await whatsappClient.sendText(replyJid, rule.reply(whatsappClient.displayBrandName(order.brandName)));
+    const session = whatsappClient.getSession(activeTenantId);
+    if (session) {
+        await session.sendText(replyJid, rule.reply(session.displayBrandName(order.brandName)));
+    } else {
+        await whatsappClient.sendText(replyJid, rule.reply(whatsappClient.displayBrandName(order.brandName)));
+    }
 
     console.log(rule.log(order.orderId, reason));
 }

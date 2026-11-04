@@ -10,5 +10,6 @@ namespace EasyOrderWhatsAppBLL.ViewModels.OrderViewModels
         public string StoreId { get; set; } = "";
         public string CustomerName { get; set; } = "";
         public string BrandName { get; set; } = "";
+        public string TenantId { get; set; } = "default";
     }
 }

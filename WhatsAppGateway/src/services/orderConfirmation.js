@@ -5,10 +5,13 @@ const { formatEgyptianPhone } = require('../utils/phone');
 
 // إرسال رسالة تأكيد الأوردر (بالأزرار) للعميل - بيتنادى من سيرفر الـ C#
 // بيرجع { statusCode, body } عشان الـ route يرد بيه على طول
-async function sendOrderConfirmation({ phone, message, orderUuid, orderId, storeId, customerName, brandName }) {
+async function sendOrderConfirmation({ phone, message, orderUuid, orderId, storeId, customerName, brandName, tenantId = 'default' }) {
     if (!phone || !message) {
         return result(400, { success: false, error: 'رقم الهاتف والرسالة مطلوبين' });
     }
+
+    const activeTenantId = tenantId || 'default';
+    const session = whatsappClient.getSession(activeTenantId);
 
     // منع إرسال الرسالة مرتين لو الأوردر وصل من الـ Webhook والمزامنة التلقائية في نفس اللحظة
     if (ordersStore.exists(orderUuid)) {
@@ -17,7 +20,7 @@ async function sendOrderConfirmation({ phone, message, orderUuid, orderId, store
 
     const cleanPhone = formatEgyptianPhone(phone);
     const displayOrderId = orderId || Math.floor(1000 + Math.random() * 9000).toString();
-    const resolvedBrand = whatsappClient.resolveBrandName(brandName);
+    const resolvedBrand = session.resolveBrandName(brandName);
 
     ordersStore.add({
         orderUuid: orderUuid || '',
@@ -27,23 +30,24 @@ async function sendOrderConfirmation({ phone, message, orderUuid, orderId, store
         phone: cleanPhone,
         lid: '',
         brandName: resolvedBrand,
+        tenantId: activeTenantId,
         status: ORDER_STATUS.PENDING,
         cancelReason: '',
         createdAt: new Date().toISOString()
     });
 
-    if (!whatsappClient.isConnected) {
+    if (!session.isConnected) {
         return result(503, {
             success: false,
-            error: 'الواتساب غير متصل بعد! افتحي http://localhost:3001 وامسحي الـ QR Code أولاً.'
+            error: `الواتساب الخاص بالتاجر (${activeTenantId}) غير متصل بعد! افتحي لوحة التحكم وامسحي الـ QR Code أولاً.`
         });
     }
 
     const finalMessage = addBrandToMessage(message, brandName, resolvedBrand);
-    await whatsappClient.sendOrderConfirmation(cleanPhone, finalMessage, resolvedBrand, displayOrderId);
-    console.log(`📤 تم إرسال رسالة تأكيد الطلب بأزرار تفاعلية (#${displayOrderId}) بنجاح للرقم: ${cleanPhone}`);
+    await session.sendOrderConfirmation(cleanPhone, finalMessage, resolvedBrand, displayOrderId);
+    console.log(`📤 [${activeTenantId}] تم إرسال رسالة تأكيد الطلب بأزرار تفاعلية (#${displayOrderId}) بنجاح للرقم: ${cleanPhone}`);
 
-    return result(200, { success: true, to: cleanPhone });
+    return result(200, { success: true, to: cleanPhone, tenantId: activeTenantId });
 }
 
 // لو مفيش اسم براند في الإعدادات، بنحط اسم بروفايل الواتساب بدل كلمة "متجرنا"

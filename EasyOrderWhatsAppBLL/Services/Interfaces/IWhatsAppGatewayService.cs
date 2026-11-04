@@ -6,7 +6,7 @@ namespace EasyOrderWhatsAppBLL.Services.Interfaces
     public interface IWhatsAppGatewayService
     {
         Task<bool> SendOrderConfirmationAsync(SendConfirmationViewModel confirmation);
-        Task<string?> GetDashboardHtmlAsync();
-        Task LogoutAsync();
+        Task<string?> GetDashboardHtmlAsync(string? tenantId = "default");
+        Task LogoutAsync(string? tenantId = "default");
     }
 }

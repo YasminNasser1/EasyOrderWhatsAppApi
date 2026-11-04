@@ -33,12 +33,16 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
             }
         }
 
-        // 2. جلب صفحة الواتساب (QR Code / متصل) عشان نعرضها على بورت 5055
-        public async Task<string?> GetDashboardHtmlAsync()
+        // 2. جلب صفحة الواتساب (QR Code / متصل) للتاجر المحدد عشان نعرضها على بورت 5055
+        public async Task<string?> GetDashboardHtmlAsync(string? tenantId = "default")
         {
             try
             {
-                return await httpClient.GetStringAsync(WhatsAppGatewayRoutes.Dashboard);
+                var route = string.IsNullOrWhiteSpace(tenantId) || tenantId.Equals("default", StringComparison.OrdinalIgnoreCase)
+                    ? WhatsAppGatewayRoutes.Dashboard
+                    : $"/whatsapp/{tenantId.Trim().ToLower()}";
+
+                return await httpClient.GetStringAsync(route);
             }
             catch
             {
@@ -46,16 +50,20 @@ namespace EasyOrderWhatsAppBLL.Services.Classes
             }
         }
 
-        // 3. تسجيل الخروج من الواتساب المربوط
-        public async Task LogoutAsync()
+        // 3. تسجيل الخروج من جلسة الواتساب للتاجر المحدد
+        public async Task LogoutAsync(string? tenantId = "default")
         {
             try
             {
-                await httpClient.PostAsync(WhatsAppGatewayRoutes.Logout, null);
+                var route = string.IsNullOrWhiteSpace(tenantId) || tenantId.Equals("default", StringComparison.OrdinalIgnoreCase)
+                    ? WhatsAppGatewayRoutes.Logout
+                    : $"/logout/{tenantId.Trim().ToLower()}";
+
+                await httpClient.PostAsync(route, null);
             }
             catch (Exception ex)
             {
-                logger.LogError("❌ تعذر تسجيل الخروج من الواتساب: {Error}", ex.Message);
+                logger.LogError("❌ تعذر تسجيل الخروج من الواتساب للتاجر {Tenant}: {Error}", tenantId, ex.Message);
             }
         }
     }

@@ -13,6 +13,8 @@ namespace EasyOrderWhatsAppDAL.Entities
         public decimal TotalCost { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public string? CancelReason { get; set; }
+        public string? CallbackUrl { get; set; }
+        public string? TenantId { get; set; } = "default";
 
         #region Behaviors (Encapsulation: الأوردر هو اللي بيغير حالته بنفسه)
 
